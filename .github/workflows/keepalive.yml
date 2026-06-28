@@ -1,8 +1,6 @@
 name: Check sandbox availability
 
 on:
-  schedule:
-    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
     inputs:
       duration_seconds:

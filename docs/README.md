@@ -2,8 +2,8 @@
 
 This repository contains a small external health checker for three public
 `trycloudflare.com` endpoints plus a lightweight ttyd traffic runner. GitHub
-Actions runs both four times per hour, so the laptop and the NixOS sandbox do
-not run the monitoring process.
+Actions runs both after cron-job.org dispatches the workflow four times per
+hour, so the laptop and the NixOS sandbox do not run the monitoring process.
 
 The checker sends ordinary HTTP `GET` requests. It does not connect to the
 terminal WebSocket, authenticate, type commands, or imitate interactive use.
@@ -91,7 +91,7 @@ an authorized, dedicated always-on host. A target is considered successful if
 it establishes at least one ttyd connection during the run. Temporary
 failures are retried while the other targets continue.
 
-## Publish and enable GitHub Actions
+## Publish and enable automation
 
 1. Create a new **public** repository on GitHub. Public visibility is required
    for unlimited free use of standard GitHub-hosted runners.
@@ -103,20 +103,21 @@ failures are retried while the other targets continue.
 5. Open the completed run and confirm the three target records and final
    summary appear in **Check live endpoints**.
 
-The workflow runs at minutes 7, 22, 37, and 52 of every UTC hour. GitHub may
-delay or drop scheduled jobs during periods of high Actions load. Scheduled
-runs exercise all three terminal sessions for four minutes. A manually
-dispatched run defaults to a 30-second smoke test and accepts a custom
-`duration_seconds` input.
+Native GitHub `schedule` events are intentionally not used because GitHub did
+not reliably emit them for this repository. cron-job.org job `7937273`
+dispatches `.github/workflows/keepalive.yml` at minutes 7, 22, 37, and 52 of
+every hour in the `Asia/Kolkata` timezone. Each external dispatch requests a
+four-minute traffic session. A manually dispatched run defaults to a
+30-second smoke test and accepts a custom `duration_seconds` input.
 
-GitHub automatically disables scheduled workflows in public repositories
-after 60 days without repository activity. When that happens, open the
-workflow in the Actions tab and select **Enable workflow**. This project does
-not create artificial commits to bypass that GitHub policy.
+The cron-job.org request stores no response bodies. Its GitHub credential must
+be a dedicated fine-grained token restricted to this repository with only
+`Actions: write` permission. Rotate that token before its configured
+expiration and update the cron-job.org request header at the same time.
 
 GitHub-hosted runners have finite job limits and are governed by GitHub's
 [Actions terms](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features).
-The scheduled workflow therefore provides bounded, best-effort interactive
+The externally dispatched workflow provides bounded, best-effort interactive
 availability checks, not uninterrupted 24/7 WebSocket sessions. For strict
 continuous operation, run the same CLI with `--duration-seconds 0` under a
 service manager on infrastructure authorized for that purpose.
