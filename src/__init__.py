@@ -1,0 +1,1 @@
+"""External availability checker package."""
