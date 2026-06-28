@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import WebSocket from "ws";
 
 const DEFAULT_CONFIG = "config/targets.json";
 const DEFAULT_DURATION_SECONDS = 240;
@@ -507,7 +508,9 @@ async function openTtydConnection(target, {
   const { websocketUrl } = deriveTtydUrls(target.url);
   let socket;
   try {
-    socket = webSocketFactory(websocketUrl, ["tty"]);
+    socket = webSocketFactory(websocketUrl, ["tty"], {
+      origin: new URL(target.url).origin,
+    });
     socket.binaryType = "arraybuffer";
   } catch {
     throw new RunnerError("websocket_create");
@@ -663,7 +666,9 @@ export class TargetWorker {
     this.rng = options.rng ?? productionRandom;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.webSocketFactory =
-      options.webSocketFactory ?? ((url, protocols) => new WebSocket(url, protocols));
+      options.webSocketFactory ??
+      ((url, protocols, websocketOptions) =>
+        new WebSocket(url, protocols, websocketOptions));
     this.sleeper = options.sleeper ?? sleep;
     this.now = options.now ?? (() => Date.now());
     this.signal = options.signal;
@@ -855,7 +860,8 @@ export async function runTraffic(targets, {
   logger = createLogger(),
   rng = productionRandom,
   fetchImpl = globalThis.fetch,
-  webSocketFactory = (url, protocols) => new WebSocket(url, protocols),
+  webSocketFactory = (url, protocols, websocketOptions) =>
+    new WebSocket(url, protocols, websocketOptions),
   sleeper = sleep,
   now = () => Date.now(),
   signal,

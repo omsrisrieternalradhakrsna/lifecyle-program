@@ -29,7 +29,9 @@ new hostname, update the matching URL and push the change to GitHub.
 
 `src/traffic_runner.mjs` opens one independent ttyd WebSocket session per
 target. It uses ttyd's `/token` and `/ws` endpoints directly, so it does not
-need Chromium or other browser automation.
+need Chromium or other browser automation. Each WebSocket handshake sends the
+endpoint's matching `Origin` header, as a normal browser does; this is required
+by ttyd instances that enforce origin checks.
 
 Each session:
 
@@ -55,10 +57,11 @@ reconnect information, byte counts, and final summaries.
 ## Run locally
 
 The checker requires Python 3.11 or newer. The traffic runner requires Node.js
-22 or newer. Neither has third-party runtime dependencies.
+22 or newer and the small `ws` WebSocket client dependency.
 
 ```bash
 python -m unittest discover -s tests -v
+npm ci
 npm test
 python -m src.checker --config config/targets.json
 node src/traffic_runner.mjs --config config/targets.json --dry-run

@@ -195,6 +195,7 @@ test("ttyd frames match the browser protocol", () => {
 test("runner opens all workers independently and sends framed commands", async () => {
   const clock = fakeClock();
   const sockets = [];
+  const socketOptions = [];
   const fetched = [];
   const targets = [
     { name: "one", url: "https://one.example.test/" },
@@ -218,9 +219,10 @@ test("runner opens all workers independently and sends framed commands", async (
         text: async () => JSON.stringify({ token: "" }),
       };
     },
-    webSocketFactory: () => {
+    webSocketFactory: (_url, _protocols, options) => {
       const socket = new FakeWebSocket();
       sockets.push(socket);
+      socketOptions.push(options);
       return socket;
     },
   });
@@ -230,6 +232,11 @@ test("runner opens all workers independently and sends framed commands", async (
   assert.ok(summaries.every((summary) => summary.commands_sent >= 1));
   assert.equal(fetched.length, 3);
   assert.equal(sockets.length, 3);
+  assert.deepEqual(socketOptions, [
+    { origin: "https://one.example.test" },
+    { origin: "https://two.example.test" },
+    { origin: "https://three.example.test" },
+  ]);
   for (const socket of sockets) {
     assert.ok(socket.sent.length > 1);
     assert.deepEqual(JSON.parse(decoder.decode(socket.sent[0])), {
