@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
+    inputs:
+      duration_seconds:
+        description: Terminal traffic duration for a manual smoke test
+        required: false
+        default: "30"
+        type: string
 
 permissions:
   contents: read
@@ -16,7 +22,7 @@ jobs:
   check:
     name: Check all endpoints
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     env:
       PYTHONUNBUFFERED: "1"
     steps:
@@ -28,8 +34,33 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Run unit tests
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "24"
+
+      - name: Run Python unit tests
         run: python -m unittest discover -s tests -v
 
+      - name: Run Node.js unit tests
+        run: npm test
+
       - name: Check live endpoints
+        id: availability
+        continue-on-error: true
         run: python -m src.checker --config config/targets.json
+
+      - name: Exercise terminal sessions
+        env:
+          TRAFFIC_DURATION_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.duration_seconds || '240' }}
+        run: >-
+          node src/traffic_runner.mjs
+          --config config/targets.json
+          --duration-seconds "$TRAFFIC_DURATION_SECONDS"
+          --log-level debug
+
+      - name: Preserve availability-check failure
+        if: ${{ always() && steps.availability.outcome != 'success' }}
+        run: |
+          echo "The HTTP availability check failed before terminal traffic ran." >&2
+          exit 1

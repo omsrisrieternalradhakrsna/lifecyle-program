@@ -1,0 +1,11 @@
+{
+  "name": "lifecycle-terminal-traffic",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/test_traffic_runner.mjs"
+  }
+}
